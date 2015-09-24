@@ -88,6 +88,7 @@ package goworker
 import (
 	"flag"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -113,12 +114,19 @@ func Namespace() string {
 }
 
 func init() {
-	flag.StringVar(&queuesString, "queues", "", "a comma-separated list of Resque queues")
+	potentialQueues := os.Getenv("WORKER_QUEUES")
+	potentialConcurrency := os.Getenv("WORKER_CONCURRENCY")
 
+	concurrency = 25
+
+	if potentialConcurrency != "" {
+		tmp, _ := strconv.ParseInt(potentialConcurrency, 10, 32)
+		concurrency = int(tmp)
+	}
+
+	flag.StringVar(&queuesString, "queues", potentialQueues, "a comma-separated list of Resque queues")
 	flag.Float64Var(&intervalFloat, "interval", 5.0, "sleep interval when no jobs are found")
-
-	flag.IntVar(&concurrency, "concurrency", 25, "the maximum number of concurrently executing jobs")
-
+	flag.IntVar(&concurrency, "concurrency", concurrency, "the maximum number of concurrently executing jobs")
 	flag.IntVar(&connections, "connections", 2, "the maximum number of connections to the Redis database")
 
 	redisProvider := os.Getenv("REDIS_PROVIDER")
@@ -131,12 +139,10 @@ func init() {
 	if redisEnvUri == "" {
 		redisEnvUri = "redis://localhost:6379/"
 	}
+
 	flag.StringVar(&uri, "uri", redisEnvUri, "the URI of the Redis server")
-
 	flag.StringVar(&namespace, "namespace", "resque:", "the Redis namespace")
-
 	flag.BoolVar(&exitOnComplete, "exit-on-complete", false, "exit when the queue is empty")
-
 	flag.BoolVar(&useNumber, "use-number", false, "use json.Number instead of float64 when decoding numbers in JSON. will default to true soon")
 }
 
